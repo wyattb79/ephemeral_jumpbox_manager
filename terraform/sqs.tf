@@ -3,6 +3,11 @@ module "startup_tag_manager" {
   queue_name = "startup_tag_manager"
 }
 
+module "add_eks_access" {
+  source = "./modules/sqs-queue"
+  queue_name = "add_eks_access"
+}
+
 module "shutdown_tag_manager" {
   source = "./modules/sqs-queue"
   queue_name = "shutdown_tag_manager"

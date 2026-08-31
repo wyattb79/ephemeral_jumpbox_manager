@@ -8,10 +8,12 @@ REGION = os.environ.get('AWS_REGION')
 LOG_LEVEL = os.environ.get("LAMBDA_LOG_LEVEL", "DEBUG").upper()
 JUMPBOX_TAG = os.environ.get('JUMPBOX_TAG', 'Jumpbox')
 CLUSTER_TAG = os.environ.get('CLUSTER_TAG', 'Cluster')
-TOPIC_ARN = os.environ.get('SNS_TOPIC_ARN')
+EKS_QUEUE_URL = os.environ.get('EKS_QUEUE_URL')
+SG_QUEUE_URL = os.environ.get('SG_QUEUE_URL')
 
 ec2_client = boto3.client('ec2')
-sns_client = boto3.client('sns')
+sqs_client = boto3.client('sqs')
+iam_client = boto3.client('iam')
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -19,7 +21,6 @@ logger.setLevel(logging.INFO)
 def handler(event, context):
 
   for record in event.get('Records', []):
-
     try:
       body = json.loads(record.get('body', '{}'))
       event_detail = body.get('detail', {})
@@ -73,37 +74,44 @@ def handler(event, context):
           logger.error(f"Remote security group missing GroupId key for instance {remote_instance_id}.")
           continue
 
-        payload = {
-          'instance_id': instance_id,
-          'remote_sg': remote_sg,
-          'jumpbox_sg': jumpbox_sg
+        # Publish notification to downstream SQS queue
+        message_data = {
+          "instance_id": instance_id,
+          "remote_sg": remote_sg,
+          "jumpbox_sg": jumpbox_sg
         }
-        
-        # Publish the JSON payload to the SNS topic
-        response = sns_client.publish(
-                     TopicArn=TOPIC_ARN,
-                     Message=json.dumps(payload),
-                     Subject='Jumpbox SecurityGroup Access'
-                   )
 
-        logger.debug(f"Publish instance_id: {instance_id} remote_sg: {remote_sg} jumpbox_sg: {jumpbox_sg} to SNS")
+#        sqs_client.send_message(
+#          QueueUrl=QUEUE_URL,
+#          MessageBody=json.dumps(message_data)
+#        )
+        logger.info(f"Successfully queued update for instance {instance_id}")
 
         # get eks cluster info, and send to sns
         if CLUSTER_TAG in flat_tags:
           cluster_name = flat_tags[CLUSTER_TAG]
 
-          payload = {
-            'cluster_name': cluster_name
+          iam_profile_data = instance_data.get('IamInstanceProfile')
+          if not iam_profile_data:
+            return {'statusCode': 200, 'body': f"No IAM Role attached to instance {instance_id}."}
+
+          profile_arn = iam_profile_data['Arn']
+          profile_name = profile_arn.split('/')[-1]
+          iam_response = iam_client.get_instance_profile(InstanceProfileName=profile_name)
+          logger.info(iam_response)
+          profile_role = iam_response['InstanceProfile']['Roles'][0]['Arn']
+          logger.info(profile_role)
+
+          message_data = {
+            'cluster_name': cluster_name,
+            'jumpbox_role': profile_role
           }
+          sqs_client.send_message(
+            QueueUrl=EKS_QUEUE_URL,
+            MessageBody=json.dumps(message_data)
+          )
+          logger.info(f"Successfully queued update for cluster {cluster_name}")
 
-          # Publish the JSON payload to the SNS topic
-          response = sns_client.publish(
-                       TopicArn=TOPIC_ARN,
-                       Message=json.dumps(payload),
-                       Subject='Jumpbox Cluster Access'
-                     )
-
-          logger.debug(f"Publish cluster: {cluster_name}")
         else:
           logger.debug("No tag found for cluster")
 
