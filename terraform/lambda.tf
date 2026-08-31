@@ -11,7 +11,7 @@ module "lambda_startup_tag_manager" {
     CLUSTER_TAG = var.cluster_tag,
     REGION = data.aws_region.current.region
     EKS_QUEUE_URL = module.add_eks_access.queue_name
-#    SG_QUEUE_URL = module
+    SG_QUEUE_URL = module.add_sg_entry.queue_name
   }
 
   queue_arn = module.startup_tag_manager.queue_arn
@@ -34,6 +34,25 @@ module "lambda_add_eks_access" {
   }
 
   queue_arn = module.add_eks_access.queue_arn
+
+  layers = [aws_lambda_layer_version.shared_library.arn]
+}
+
+# function to add security group entries
+module "lambda_add_sg_entry" {
+  source = "./modules/lambda-function"
+  function_name = "add_sg_entry"
+  role = module.lambda_add_sg_entry_role.role_arn
+  region = data.aws_region.current.region
+  python_runtime = var.python_runtime
+
+  lambda_env_vars = {
+    JUMPBOX_TAG = var.jumpbox_tag,
+    CLUSTER_TAG = var.cluster_tag,
+    REGION = data.aws_region.current.region
+  }
+
+  queue_arn = module.add_sg_entry.queue_arn
 
   layers = [aws_lambda_layer_version.shared_library.arn]
 }

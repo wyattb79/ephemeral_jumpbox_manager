@@ -32,6 +32,13 @@ resource "aws_iam_policy" "lambda_startup_tag_manager_policy" {
       {
         Effect = "Allow"
         Action = [
+          "sqs:SendMessage",
+        ]
+        Resource = [ module.add_sg_entry.queue_arn ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
           "ec2:DescribeInstances"
         ]
         Resource = "*"
@@ -82,6 +89,41 @@ resource "aws_iam_policy" "lambda_add_eks_access_policy" {
         Effect = "Allow"
         Action = [
           "iam:PassRole"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# IAM for add security group entry lambda
+module "lambda_add_sg_entry_role" {
+  source = "./modules/iam-role"
+  role_name = "lambda_add_sg_entry"
+  policy_arns = {
+    "lambda_add_sg_entry" = aws_iam_policy.lambda_add_sg_entry_policy.arn 
+  }
+}
+
+resource "aws_iam_policy" "lambda_add_sg_entry_policy" {
+  name = "lambda_add_sg_entry"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes",
+        ]
+        Resource = [ module.add_sg_entry.queue_arn ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:AuthorizeSecurityGroupIngress",
         ]
         Resource = "*"
       }

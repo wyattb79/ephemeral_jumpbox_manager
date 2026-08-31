@@ -78,13 +78,14 @@ def handler(event, context):
         message_data = {
           "instance_id": instance_id,
           "remote_sg": remote_sg,
-          "jumpbox_sg": jumpbox_sg
+          "local_sg": jumpbox_sg,
+          "sg_port": "22"
         }
 
-#        sqs_client.send_message(
-#          QueueUrl=QUEUE_URL,
-#          MessageBody=json.dumps(message_data)
-#        )
+        sqs_client.send_message(
+          QueueUrl=SG_QUEUE_URL,
+          MessageBody=json.dumps(message_data)
+        )
         logger.info(f"Successfully queued update for instance {instance_id}")
 
         # get eks cluster info, and send to sns

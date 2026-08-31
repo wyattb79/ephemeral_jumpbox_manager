@@ -8,6 +8,11 @@ module "add_eks_access" {
   queue_name = "add_eks_access"
 }
 
+module "add_sg_entry" {
+  source = "./modules/sqs-queue"
+  queue_name = "add_sg_entry"
+}
+
 module "shutdown_tag_manager" {
   source = "./modules/sqs-queue"
   queue_name = "shutdown_tag_manager"
