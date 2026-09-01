@@ -91,7 +91,14 @@ resource "aws_iam_policy" "lambda_add_eks_access_policy" {
           "iam:PassRole"
         ]
         Resource = "*"
-      }
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "sqs:SendMessage",
+        ]
+        Resource = [ module.add_dynamo_entry.queue_arn ]
+      },
     ]
   })
 }
@@ -127,6 +134,45 @@ resource "aws_iam_policy" "lambda_add_sg_entry_policy" {
         ]
         Resource = "*"
       }
+    ]
+  })
+}
+
+# IAM for add dynamo entry lambda
+module "lambda_add_dynamo_entry_role" {
+  source = "./modules/iam-role"
+  role_name = "lambda_add_dynamo_entry"
+  policy_arns = {
+    "lambda_add_dynamo_entry" = aws_iam_policy.lambda_add_dynamo_entry_policy.arn 
+  }
+}
+
+resource "aws_iam_policy" "lambda_add_dynamo_entry_policy" {
+  name = "lambda_add_dynamo_entry"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes",
+        ]
+        Resource = [ module.add_dynamo_entry.queue_arn ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:PutItem",
+          "dynamodb:Query",
+          "dynamodb:UpdateItem"
+        ]
+        Resource: [ "arn:aws:dynamodb:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:table/${var.dynamo_table_name}",
+        "arn:aws:dynamodb:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:table/${var.dynamo_table_name}/index/*"
+        ]
+      },
     ]
   })
 }

@@ -31,6 +31,7 @@ module "lambda_add_eks_access" {
     JUMPBOX_TAG = var.jumpbox_tag,
     CLUSTER_TAG = var.cluster_tag,
     REGION = data.aws_region.current.region
+    DYNAMO_QUEUE = module.add_dynamo_entry.queue_name
   }
 
   queue_arn = module.add_eks_access.queue_arn
@@ -53,6 +54,26 @@ module "lambda_add_sg_entry" {
   }
 
   queue_arn = module.add_sg_entry.queue_arn
+
+  layers = [aws_lambda_layer_version.shared_library.arn]
+}
+
+# function to add dynamo entries
+module "lambda_add_dynamo_entry" {
+  source = "./modules/lambda-function"
+  function_name = "add_dynamo_entry"
+  role = module.lambda_add_dynamo_entry_role.role_arn
+  region = data.aws_region.current.region
+  python_runtime = var.python_runtime
+
+  lambda_env_vars = {
+    JUMPBOX_TAG = var.jumpbox_tag,
+    CLUSTER_TAG = var.cluster_tag,
+    REGION = data.aws_region.current.region
+    TABLE_NAME = var.dynamo_table_name
+  }
+
+  queue_arn = module.add_dynamo_entry.queue_arn
 
   layers = [aws_lambda_layer_version.shared_library.arn]
 }

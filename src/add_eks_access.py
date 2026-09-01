@@ -6,6 +6,7 @@ from shared_library import get_instance_data, resources_exist
 
 REGION = os.environ.get('AWS_REGION')
 LOG_LEVEL = os.environ.get("LAMBDA_LOG_LEVEL", "DEBUG").upper()
+DYNAMO_QUEUE = os.environ.get('DYNAMO_QUEUE')
 
 eks_client = boto3.client('eks')
 sqs_client = boto3.client('sqs')
@@ -20,6 +21,7 @@ def handler(event, context):
     try:
       body = record.get('body', {})
       message_body = json.loads(body) if isinstance(body, str) else body
+      instance_id = message_body.get('instance_id')
       cluster_name = message_body.get('cluster_name')
       jumpbox_profile = message_body.get('jumpbox_role')
       logger.info(f"Got instance profile {jumpbox_profile} for cluster {cluster_name}")
@@ -29,6 +31,19 @@ def handler(event, context):
         type='EC2_LINUX'
       )
       logger.info(f"Added access entry for {jumpbox_profile} into cluster {cluster_name}")
+
+      # Publish notification to downstream SQS queue
+      message_data = {
+        "instance_id": instance_id,
+        "cluster_name": cluster_name,
+        "profile_role": jumpbox_profile
+      }
+
+      sqs_client.send_message(
+        QueueUrl=DYNAMO_QUEUE,
+        MessageBody=json.dumps(message_data)
+      )
+      logger.info(f"Successfully queued  ")
 
     except Exception as e:
       logger.error(f"Error processing record: {e}")

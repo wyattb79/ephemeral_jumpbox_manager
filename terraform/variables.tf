@@ -17,3 +17,8 @@ variable "contact_email" {
   type = string
   description = "email to contact when DLQ receives a message"
 }
+
+variable "dynamo_table_name" {
+  type = string
+  description = "Name of the DynamoDB table for storing jumpbox information"
+}

@@ -13,6 +13,11 @@ module "add_sg_entry" {
   queue_name = "add_sg_entry"
 }
 
+module "add_dynamo_entry" {
+  source = "./modules/sqs-queue"
+  queue_name = "add_dynamo_entry"
+}
+
 module "shutdown_tag_manager" {
   source = "./modules/sqs-queue"
   queue_name = "shutdown_tag_manager"

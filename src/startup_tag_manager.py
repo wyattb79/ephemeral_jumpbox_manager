@@ -104,6 +104,7 @@ def handler(event, context):
           logger.info(profile_role)
 
           message_data = {
+            'instance_id': instance_id,
             'cluster_name': cluster_name,
             'jumpbox_role': profile_role
           }
