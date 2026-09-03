@@ -14,5 +14,5 @@ resource "aws_cloudwatch_event_rule" "this" {
 resource "aws_cloudwatch_event_target" "this" {
   rule = aws_cloudwatch_event_rule.this.name
   target_id = var.target_id
-  arn = var.queue_arn
+  arn = var.resource_arn
 }

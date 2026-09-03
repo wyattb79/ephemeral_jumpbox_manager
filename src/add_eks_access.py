@@ -43,7 +43,6 @@ def handler(event, context):
         QueueUrl=DYNAMO_QUEUE,
         MessageBody=json.dumps(message_data)
       )
-      logger.info(f"Successfully queued  ")
 
     except Exception as e:
       logger.error(f"Error processing record: {e}")

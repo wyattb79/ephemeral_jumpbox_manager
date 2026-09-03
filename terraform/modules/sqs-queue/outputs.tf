@@ -3,12 +3,12 @@ output "queue_arn" {
   value       = aws_sqs_queue.this.arn
 }
 
-output "queue_id" {
+output "queue_url" {
   description = "URL of the SQS queue"
   value       = aws_sqs_queue.this.id
 }
 
 output "queue_name" {
-  description = "URL of the SQS queue"
+  description = "NAME of the SQS queue"
   value       = aws_sqs_queue.this.name
 }

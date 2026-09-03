@@ -20,9 +20,12 @@ def handler(event, context):
 
     try:
       body = record.get('body', {})
+      logger.info("Got record")
+      logger.info(body)
       message_body = json.loads(body) if isinstance(body, str) else body
       instance_id = message_body.get('instance_id')
       cluster_name = message_body.get('cluster_name')
+      # upsert dynamo record for cluster access entry
       if cluster_name:
         profile_role = message_body.get('profile_role')
         dynamo_client.update_item(
@@ -37,12 +40,28 @@ def handler(event, context):
           },
           ReturnValues="UPDATED_NEW"
         )
-        logger.info(f"Added {cluster_name} access entry for {profile_role} to Dynamo")
+        logger.info(f"Added {cluster_name} access entry for {profile_role} at {instance_id} to Dynamo")
 
+      # upsert dynamo record for jumpbox sg entry
       remote_sg = message_body.get('remote_sg')
-      local_sg = message_body.get('local_sg')
-
-      logger.info(f"Added to dynamo")
+      logger.info("A1")
+      if remote_sg:
+        logger.info("A2")
+        local_sg = message_body.get('local_sg')
+        logger.info("A3")
+        dynamo_client.update_item(
+          TableName=TABLE_NAME,
+          Key={
+            'InstanceId': {'S': instance_id}
+          },
+          UpdateExpression="SET remote_sg = :remote_val, local_sg = :local_val",
+          ExpressionAttributeValues={
+            ':remote_val': {'S': remote_sg},
+            ':local_val': {'S': local_sg}
+          },
+          ReturnValues="UPDATED_NEW"
+        )
+        logger.info(f"Added {remote_sg} sg entry for {local_sg} on {instance_id} to Dynamo")
 
     except Exception as e:
       logger.error(f"Error processing record: {e}")

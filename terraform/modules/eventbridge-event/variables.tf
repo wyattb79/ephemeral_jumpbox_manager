@@ -18,7 +18,7 @@ variable "target_id" {
   description = "ID of the event target"
 }
 
-variable "queue_arn" {
+variable "resource_arn" {
   type = string
-  description = "ARN of the SQS queue to send event to"
+  description = "ARN of the AWS resource to send event to"
 }
