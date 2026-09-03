@@ -7,6 +7,7 @@ from shared_library import get_instance_data, resources_exist
 REGION = os.environ.get('AWS_REGION')
 LOG_LEVEL = os.environ.get("LAMBDA_LOG_LEVEL", "DEBUG").upper()
 DYNAMO_QUEUE = os.environ.get('DYNAMO_QUEUE')
+SG_QUEUE_URL = os.environ.get('SG_QUEUE_URL')
 
 eks_client = boto3.client('eks')
 sqs_client = boto3.client('sqs')
@@ -24,13 +25,24 @@ def handler(event, context):
       instance_id = message_body.get('instance_id')
       cluster_name = message_body.get('cluster_name')
       jumpbox_profile = message_body.get('jumpbox_role')
+      local_sg = message_body.get('local_sg')
       logger.info(f"Got instance profile {jumpbox_profile} for cluster {cluster_name}")
       eks_client.create_access_entry(
         clusterName=cluster_name,
         principalArn=jumpbox_profile,
-        type='EC2_LINUX'
+        type='STANDARD'
       )
       logger.info(f"Added access entry for {jumpbox_profile} into cluster {cluster_name}")
+
+      eks_client.associate_access_policy(
+        clusterName=cluster_name,
+        principalArn=jumpbox_profile,
+        policyArn='arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy',
+        accessScope={
+          'type': 'cluster'
+        }
+      )
+      logger.info(f"Associated admin policy for {jumpbox_profile} into cluster {cluster_name}")
 
       # Publish notification to downstream SQS queue
       message_data = {
@@ -41,6 +53,22 @@ def handler(event, context):
 
       sqs_client.send_message(
         QueueUrl=DYNAMO_QUEUE,
+        MessageBody=json.dumps(message_data)
+      )
+
+      response = eks_client.describe_cluster(name=cluster_name)
+      vpc_config = response['cluster']['resourcesVpcConfig']
+      cluster_sg_id = vpc_config.get('clusterSecurityGroupId')
+
+      message_data = {
+        "instance_id": instance_id,
+        "local_sg": local_sg,
+        "cluster_sg": cluster_sg_id,
+        "sg_port": "443"
+      }
+
+      sqs_client.send_message(
+        QueueUrl=SG_QUEUE_URL,
         MessageBody=json.dumps(message_data)
       )
 

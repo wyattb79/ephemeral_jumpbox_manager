@@ -41,12 +41,16 @@ def handler(event, context):
         logger.info(f"No Dynamo entry for {instance_id}")
         continue
 
-      remote_sg = item.get('remote_sg').get('S')
-      if not remote_sg:
+      local_sg = item.get('local_sg').get('S')
+      if not local_sg:
         logger.info(f"No sg access entry for {instance_id}")
         continue
 
-      local_sg = item.get('local_sg').get('S')
+      logger.info("B1")
+      cluster_sg = item.get('cluster_sg').get('S')
+      logger.info("B2")
+      remote_sg = item.get('remote_sg').get('S')
+      logger.info("B3")
 
       ec2_client.revoke_security_group_ingress(
         GroupId=remote_sg,
@@ -59,18 +63,34 @@ def handler(event, context):
           }
         ]
       )
+      logger.info("B4")
 
-      logger.info(f"Revoked entry to {remote_sg} for {local_sg} on 22")
+      logger.info(f"Revoking from {cluster_sg} for {local_sg} on 443")
+
+      ec2_client.revoke_security_group_ingress(
+        GroupId=cluster_sg,
+        IpPermissions=[
+          {
+            'IpProtocol': 'tcp',
+            'FromPort': 443,
+            'ToPort': 443,
+            'UserIdGroupPairs': [{'GroupId': local_sg}]
+          }
+        ]
+      )
+
+      logger.info(f"Revoked entries to {remote_sg} and {cluster_sg} for {local_sg} on 22/443")
 
       dynamo_client.update_item(
         TableName=TABLE_NAME,
         Key={
             'InstanceId': {'S': instance_id }
         },
-        UpdateExpression="REMOVE #field1, #field2",
+        UpdateExpression="REMOVE #field1, #field2, #field3",
         ExpressionAttributeNames={
           "#field1": "remote_sg",
-          "#field2": "local_sg"
+          "#field2": "local_sg",
+          "#field3": "cluster_sg"
         }
       )
 

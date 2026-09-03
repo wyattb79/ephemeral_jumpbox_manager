@@ -23,11 +23,14 @@ def handler(event, context):
       message_body = json.loads(body) if isinstance(body, str) else body
       instance_id = message_body.get('instance_id')
       remote_sg = message_body.get('remote_sg')
+      cluster_sg = message_body.get('cluster_sg')
       local_sg = message_body.get('local_sg')
       sg_port = message_body.get('sg_port')
 
+      add_sg = cluster_sg or remote_sg 
+
       ec2_client.authorize_security_group_ingress(
-        GroupId=remote_sg,
+        GroupId=add_sg,
         IpPermissions=[
           {
             'IpProtocol': 'tcp',
@@ -38,14 +41,23 @@ def handler(event, context):
         ]
       )
 
-      logger.info(f"Added entry to {remote_sg} for {local_sg} on {sg_port}")
+      logger.info(f"Added entry to {add_sg} for {local_sg} on {sg_port}")
 
       # Publish notification to downstream SQS queue
-      message_data = {
-        "instance_id": instance_id,
-        "remote_sg": remote_sg,
-        "local_sg": local_sg
-      }
+      if cluster_sg:
+        message_data = {
+          "instance_id": instance_id,
+          "cluster_sg": cluster_sg,
+          "local_sg": local_sg
+        }
+
+
+      else:
+        message_data = {
+          "instance_id": instance_id,
+          "remote_sg": remote_sg,
+          "local_sg": local_sg
+        }
 
       sqs_client.send_message(
         QueueUrl=DYNAMO_QUEUE,

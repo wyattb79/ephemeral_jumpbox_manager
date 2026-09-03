@@ -32,6 +32,7 @@ module "lambda_add_eks_access" {
     CLUSTER_TAG = var.cluster_tag,
     REGION = data.aws_region.current.region
     DYNAMO_QUEUE = module.add_dynamo_entry.queue_name
+    SG_QUEUE_URL = module.add_sg_entry.queue_name
   }
 
   queue_arn = module.add_eks_access.queue_arn

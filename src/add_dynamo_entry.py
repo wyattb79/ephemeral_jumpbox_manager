@@ -44,11 +44,9 @@ def handler(event, context):
 
       # upsert dynamo record for jumpbox sg entry
       remote_sg = message_body.get('remote_sg')
-      logger.info("A1")
+      cluster_sg = message_body.get('cluster_sg')
       if remote_sg:
-        logger.info("A2")
         local_sg = message_body.get('local_sg')
-        logger.info("A3")
         dynamo_client.update_item(
           TableName=TABLE_NAME,
           Key={
@@ -62,6 +60,22 @@ def handler(event, context):
           ReturnValues="UPDATED_NEW"
         )
         logger.info(f"Added {remote_sg} sg entry for {local_sg} on {instance_id} to Dynamo")
+
+      if cluster_sg:
+        local_sg = message_body.get('local_sg')
+        dynamo_client.update_item(
+          TableName=TABLE_NAME,
+          Key={
+            'InstanceId': {'S': instance_id}
+          },
+          UpdateExpression="SET cluster_sg = :cluster_val, local_sg = :local_val",
+          ExpressionAttributeValues={
+            ':cluster_val': {'S': cluster_sg},
+            ':local_val': {'S': local_sg}
+          },
+          ReturnValues="UPDATED_NEW"
+        )
+        logger.info(f"Added {cluster_sg} sg entry for {local_sg} on {instance_id} to Dynamo")
 
     except Exception as e:
       logger.error(f"Error processing record: {e}")

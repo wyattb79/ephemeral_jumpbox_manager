@@ -106,6 +106,7 @@ def handler(event, context):
           message_data = {
             'instance_id': instance_id,
             'cluster_name': cluster_name,
+            'local_sg': jumpbox_sg,
             'jumpbox_role': profile_role
           }
           sqs_client.send_message(

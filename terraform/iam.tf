@@ -81,7 +81,9 @@ resource "aws_iam_policy" "lambda_add_eks_access_policy" {
       {
         Effect = "Allow"
         Action = [
-          "eks:CreateAccessEntry"
+          "eks:CreateAccessEntry",
+          "eks:AssociateAccessPolicy",
+          "eks:DescribeCluster"
         ]
         Resource = "*"
       },
@@ -97,7 +99,7 @@ resource "aws_iam_policy" "lambda_add_eks_access_policy" {
         Action = [
           "sqs:SendMessage",
         ]
-        Resource = [ module.add_dynamo_entry.queue_arn ]
+        Resource = [ module.add_dynamo_entry.queue_arn, module.add_sg_entry.queue_arn ]
       },
     ]
   })
