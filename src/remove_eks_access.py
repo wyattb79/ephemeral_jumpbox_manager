@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import boto3
-from shared_library import get_instance_data, resources_exist
+from shared_library import resources_exist
 
 REGION = os.environ.get('AWS_REGION')
 LOG_LEVEL = os.environ.get("LAMBDA_LOG_LEVEL", "DEBUG").upper()

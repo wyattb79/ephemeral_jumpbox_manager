@@ -1,14 +1,15 @@
+from typing import TypedDict
 from botocore.exceptions import ClientError
 
-def get_instance_data(ec2_client, instance_id) -> dict:
-  try:
-    response = ec2_client.describe_instances(InstanceIds=[instance_id])
-    reservations = response.get('Reservations', [])
-    if reservations and reservations[0].get('Instances'):
-      return reservations[0]['Instances'][0]
-  except ClientError as e:
-    raise
-  return {}
+class AddAccessEntryMsgFormat(TypedDict):
+    instance_id: str
+    cluster_name: str
+    local_sg: str
+    jumpbox_role: str
+
+class AddSecurityGroupMsgFormat(TypedDict):
+    jumpbox_sg: str
+    tag: str
 
 def resources_exist(ec2_arn: str, ec2_client) -> bool:
 
