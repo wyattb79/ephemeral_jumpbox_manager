@@ -16,6 +16,8 @@ logger.setLevel(logging.INFO)
 
 def handler(event, context):
 
+  logger.info("Lambda started")
+
   for record in event.get('Records', []):
 
     try:
@@ -36,6 +38,8 @@ def handler(event, context):
         }
       )
 
+      logger.info(f"Response is {response}")
+
       item = response.get('Item')
       if not item:
         logger.info(f"No Dynamo entry for {instance_id}")
@@ -46,14 +50,14 @@ def handler(event, context):
         logger.info(f"No EKS access entry for {instance_id}")
         continue
 
-      profile_role = item.get('profile_role').get('S')
+      jumpbox_profile = item.get('jumpbox_profile').get('S')
 
       eks_client.delete_access_entry(
         clusterName=cluster_name,
-        principalArn=profile_role
+        principalArn=jumpbox_profile
       )
 
-      logger.info(f"Deleted access entry for {profile_role} into cluster {cluster_name}")
+      logger.info(f"Deleted access entry for {jumpbox_profile} into cluster {cluster_name}")
 
       dynamo_client.update_item(
         TableName=TABLE_NAME,
@@ -62,8 +66,8 @@ def handler(event, context):
         },
         UpdateExpression="REMOVE #field1, #field2",
         ExpressionAttributeNames={
-          "#field1": "clusterName",
-          "#field2": "principalArn"
+          "#field1": "cluster_name",
+          "#field2": "jumpbox_profile"
         }
       )
 

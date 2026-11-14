@@ -49,12 +49,12 @@ def handler(event, context):
                 sg_tag = flattened_tags[SG_TAG]
                 logger.info(f"sg tag is {SG_TAG}")
 
-                add_sg_entries(jumpbox_sg, sg_tag)
+                #add_sg_entries(jumpbox_sg, sg_tag)
 
                 if CLUSTER_TAG in flattened_tags: 
                     cluster_name = flattened_tags[CLUSTER_TAG]
                     jumpbox_profile = flattened_tags[JB_PROFILE_TAG]
-                    add_cluster_entry(cluster_name, jumpbox_profile)
+                    add_cluster_entry(cluster_name, jumpbox_profile, instance_id)
 
         except Exception as e:
             logger.error(f"Error processing record: {e}")
@@ -93,7 +93,7 @@ def add_sg_entries(jumpbox_sg, sg_tag):
         )
         logger.info(f"Added {jumpbox_sg} to {sg_id}")
 
-def add_cluster_entry(cluster_name, jumpbox_profile):
+def add_cluster_entry(cluster_name, jumpbox_profile, instance_id):
     logger.info(f"Attempting to add access entry for {jumpbox_profile} to {cluster_name}")
 
     eks_client.create_access_entry(
@@ -125,3 +125,4 @@ def add_cluster_entry(cluster_name, jumpbox_profile):
         },
         ReturnValues="UPDATED_NEW"
     )
+    logger.info(f"Added dynamo entry for {jumpbox_profile} into cluster {cluster_name}")
