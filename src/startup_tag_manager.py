@@ -103,7 +103,7 @@ def add_cluster_entry(cluster_name, jumpbox_profile):
     )
     logger.info(f"Added access entry for {jumpbox_profile} into cluster {cluster_name}")
 
-    eks_client_associate_access_policy(
+    eks_client.associate_access_policy(
         clusterName=cluster_name,
         principalArn=jumpbox_profile,
         policyArn='arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy',
