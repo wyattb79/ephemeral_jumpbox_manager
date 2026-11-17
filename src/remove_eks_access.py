@@ -59,17 +59,27 @@ def handler(event, context):
 
       logger.info(f"Deleted access entry for {jumpbox_profile} into cluster {cluster_name}")
 
-      dynamo_client.update_item(
+      dynamo_client.delete_item(
         TableName=TABLE_NAME,
         Key={
             'InstanceId': {'S': instance_id }
-        },
-        UpdateExpression="REMOVE #field1, #field2",
-        ExpressionAttributeNames={
-          "#field1": "cluster_name",
-          "#field2": "jumpbox_profile"
+            'TargetId': {'S': cluster_name }
         }
       )
+
+      response = dynamo_client.query(
+        TableName=TABLE_NAME,
+        KeyConditionExpression="InstanceId = :inst_val",
+        ExpressionAttributeValues={
+          ":inst_val": {"S": instance_id}
+        }
+      )
+      items = response.get("Items")
+      for item in items:
+        sg_id = item["TargetId"]["S"]
+        port = item["port"]["S"]
+        jumpbox_sg = item["jumpbox_sg"]["S"]
+
 
     except Exception as e:
       logger.error(f"Error processing record: {e}")

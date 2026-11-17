@@ -28,6 +28,11 @@ variable "sg_tag" {
   description = "Tag used to identify security groups to have entries added"
 }
 
+variable "sg_tag_value" {
+  type = string
+  description = "Value of the tag used to identify security groups"
+}
+
 variable "sg_type_tag" {
   type = string
   description = "Tag used to identify the type of SG.  For EC2 we'll add ssh, for endpoint 443, etc"

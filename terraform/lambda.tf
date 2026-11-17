@@ -11,6 +11,7 @@ module "lambda_startup_tag_manager" {
     CLUSTER_TAG = var.cluster_tag,
     REGION = data.aws_region.current.region
     SG_TAG = var.sg_tag
+    SG_TAG_VALUE = var.sg_tag_value
     SG_TYPE_TAG = var.sg_type_tag
     JB_PROFILE_TAG = var.jb_profile_tag
     TABLE_NAME = var.dynamo_table_name

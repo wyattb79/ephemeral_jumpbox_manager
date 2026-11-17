@@ -10,6 +10,7 @@ LOG_LEVEL = os.environ.get("LAMBDA_LOG_LEVEL", "DEBUG").upper()
 JUMPBOX_TAG = os.environ.get('JUMPBOX_TAG')
 CLUSTER_TAG = os.environ.get('CLUSTER_TAG')
 SG_TAG = os.environ.get('SG_TAG')
+SG_TAG_VALUE = os.environ.get('SG_TAG_VALUE')
 SG_TYPE_TAG = os.environ.get('SG_TYPE_TAG')
 JB_PROFILE_TAG = os.environ.get('JB_PROFILE_TAG')
 TABLE_NAME = os.environ.get('TABLE_NAME')
@@ -49,7 +50,7 @@ def handler(event, context):
                 sg_tag = flattened_tags[SG_TAG]
                 logger.info(f"sg tag is {SG_TAG}")
 
-                #add_sg_entries(jumpbox_sg, sg_tag)
+                add_sg_entries(jumpbox_sg, sg_tag, instance_id)
 
                 if CLUSTER_TAG in flattened_tags: 
                     cluster_name = flattened_tags[CLUSTER_TAG]
@@ -60,11 +61,11 @@ def handler(event, context):
             logger.error(f"Error processing record: {e}")
             logger.error(f"Exception reason: {str(e)}")
 
-def add_sg_entries(jumpbox_sg, sg_tag):
+def add_sg_entries(jumpbox_sg, sg_tag, instance_id):
     paginator = ec2_client.get_paginator("describe_security_groups")
 
     pages = paginator.paginate(
-        Filters=[{"Name": f"tag:{SG_TAG}", "Values": [sg_tag]}]
+        Filters=[{"Name": f"tag:{SG_TAG}", "Values": [SG_TAG_VALUE]}]
     )
 
     security_groups = [ sg for page in pages for sg in page["SecurityGroups"]]
@@ -93,6 +94,17 @@ def add_sg_entries(jumpbox_sg, sg_tag):
         )
         logger.info(f"Added {jumpbox_sg} to {sg_id}")
 
+        dynamo_client.put_item(
+            TableName=TABLE_NAME,
+            Item={
+                'InstanceId': {'S': instance_id},
+                'TargetId': {'S': sg_id},
+                'port': {'S': str(port)},
+                'jumpbox_sg': {'S': jumpbox_sg}
+            }
+        )
+        logger.info(f"Added dynamo entry for {jumpbox_sg} into {sg_id}")
+
 def add_cluster_entry(cluster_name, jumpbox_profile, instance_id):
     logger.info(f"Attempting to add access entry for {jumpbox_profile} to {cluster_name}")
 
@@ -113,16 +125,12 @@ def add_cluster_entry(cluster_name, jumpbox_profile, instance_id):
     )
     logger.info(f"Associated admin policy for {jumpbox_profile} into cluster {cluster_name}")
 
-    dynamo_client.update_item(
+    dynamo_client.put_item(
         TableName=TABLE_NAME,
-        Key={
-            'InstanceId': {'S': instance_id}
-        },
-        UpdateExpression="SET cluster_name = :cluster_val, jumpbox_profile = :profile_val",
-        ExpressionAttributeValues={
-            ':cluster_val': {'S': cluster_name},
-            ':profile_val': {'S': jumpbox_profile}
-        },
-        ReturnValues="UPDATED_NEW"
+        Item={
+            'InstanceId': {'S': instance_id},
+            'TargetId': {'S': cluster_name},
+            'JumpboxProfile': {'S': jumpbox_profile}
+        }
     )
     logger.info(f"Added dynamo entry for {jumpbox_profile} into cluster {cluster_name}")
