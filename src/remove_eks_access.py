@@ -50,7 +50,7 @@ def handler(event, context):
       item = items[0]
 
       raw_cluster_name = item.get('TargetId').get('S')
-      cluster_name = raw_cluster_name.remove_prefix("cluster:")
+      cluster_name = raw_cluster_name.removeprefix("cluster:")
       if not cluster_name:
         logger.info(f"No EKS access entry for {instance_id}")
         continue
