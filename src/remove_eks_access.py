@@ -31,21 +31,26 @@ def handler(event, context):
       instance_id = message_detail.get('instance-id')
 
       logger.info(f"{instance_id} was terminated")
-      response = dynamo_client.get_item(
+      response = dynamo_client.query(
         TableName=TABLE_NAME,
-        Key={
-          'InstanceId': {'S': instance_id }
-        }
+        KeyConditionExpression="InstanceId = :inst_id AND begins_with(TargetId, :prefix)",
+        ExpressionAttributeValues={
+            ":inst_id": {"S":instance_id},
+            ":prefix": {
+                "S": "cluster:"
+            },
+        },
       )
 
-      logger.info(f"Response is {response}")
-
-      item = response.get('Item')
-      if not item:
+      items = response.get('Items')
+      if not items:
         logger.info(f"No Dynamo entry for {instance_id}")
         continue
 
-      cluster_name = item.get('cluster_name').get('S')
+      item = items[0]
+
+      cluster_name = item.get('TargetId').get('S')
+      cluster_name.remove_prefix("cluster:")
       if not cluster_name:
         logger.info(f"No EKS access entry for {instance_id}")
         continue
@@ -62,8 +67,9 @@ def handler(event, context):
       dynamo_client.delete_item(
         TableName=TABLE_NAME,
         Key={
-            'InstanceId': {'S': instance_id }
-            'TargetId': {'S': cluster_name }
+            'InstanceId': {'S': instance_id },
+            'TargetType': {'S': "cluster" },
+            'ClusterName': {'S': cluster_name }
         }
       )
 
@@ -80,6 +86,28 @@ def handler(event, context):
         port = item["port"]["S"]
         jumpbox_sg = item["jumpbox_sg"]["S"]
 
+        ec2_client.revoke_security_group_ingress(
+            GroupId=sg_id,
+            IpPermissions=[
+                {
+                    'IpProtocol': 'tcp',
+                    'FromPort': port,
+                    'ToPort': port,
+                    'UserIdGroupPairs': [{'GroupId': jumpbox_sg}]
+                }
+            ]
+        )
+        logger.info(f"Removed {jumpbox_sg} to {sg_id}")
+
+        dynamo_client.delete_item(
+            TableName=TABLE_NAME,
+            Key={
+                'InstanceId': {'S': instance_id },
+                'TargetType': {'S': "securityGroup" },
+                'TargetId': {'S': sg_id }
+            }
+        )
+        logger.info(f"Removed dynamo entry for {sg_id} access from {instance_id}")
 
     except Exception as e:
       logger.error(f"Error processing record: {e}")

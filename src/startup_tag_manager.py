@@ -98,7 +98,7 @@ def add_sg_entries(jumpbox_sg, sg_tag, instance_id):
             TableName=TABLE_NAME,
             Item={
                 'InstanceId': {'S': instance_id},
-                'TargetId': {'S': sg_id},
+                'TargetId': {'S': f"securityGroup:{sg_id}"},
                 'port': {'S': str(port)},
                 'jumpbox_sg': {'S': jumpbox_sg}
             }
@@ -129,7 +129,7 @@ def add_cluster_entry(cluster_name, jumpbox_profile, instance_id):
         TableName=TABLE_NAME,
         Item={
             'InstanceId': {'S': instance_id},
-            'TargetId': {'S': cluster_name},
+            'TargetId': {'S': f"cluster:{cluster_name}"},
             'JumpboxProfile': {'S': jumpbox_profile}
         }
     )
