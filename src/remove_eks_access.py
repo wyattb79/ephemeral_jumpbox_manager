@@ -74,7 +74,7 @@ def handler(event, context):
 
       response = dynamo_client.query(
         TableName=TABLE_NAME,
-        KeyConditionExpression="InstanceId = :inst_val",
+        KeyConditionExpression="InstanceId = :inst_id AND begins_with(TargetId, :prefix)",
         ExpressionAttributeValues={
           ":inst_id": {"S": instance_id},
           ":prefix": {"S": "securityGroup:"}
