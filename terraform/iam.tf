@@ -157,7 +157,8 @@ resource "aws_iam_policy" "lambda_remove_eks_access_policy" {
         Action = [
           "dynamodb:PutItem",
           "dynamodb:Query",
-          "dynamodb:UpdateItem"
+          "dynamodb:UpdateItem",
+          "dynamodb:DeleteItem"
         ]
         Resource: [ "arn:aws:dynamodb:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:table/${var.dynamo_table_name}",
         "arn:aws:dynamodb:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:table/${var.dynamo_table_name}/index/*"
