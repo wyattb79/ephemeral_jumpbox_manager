@@ -12,7 +12,7 @@ eks_client = boto3.client('eks')
 dynamo_client = boto3.client('dynamodb')
 
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+logger.setLevel(LOG_LEVEL)
 
 def handler(event, context):
 
@@ -31,15 +31,14 @@ def handler(event, context):
       instance_id = message_detail.get('instance-id')
 
       logger.info(f"{instance_id} was terminated")
+
       response = dynamo_client.query(
         TableName=TABLE_NAME,
         KeyConditionExpression="InstanceId = :inst_id AND begins_with(TargetId, :prefix)",
         ExpressionAttributeValues={
             ":inst_id": {"S":instance_id},
-            ":prefix": {
-                "S": "cluster:"
-            },
-        },
+            ":prefix": {"S": "cluster:"},
+        }
       )
 
       items = response.get('Items')
