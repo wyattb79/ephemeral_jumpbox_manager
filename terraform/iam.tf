@@ -167,6 +167,13 @@ resource "aws_iam_policy" "lambda_remove_eks_access_policy" {
       {
         Effect = "Allow"
         Action = [
+          "ec2:RevokeSecurityGroupIngress",
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
           "dynamodb:GetItem",
           "dynamodb:UpdateItem"
         ]
