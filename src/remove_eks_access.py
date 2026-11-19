@@ -8,6 +8,7 @@ REGION = os.environ.get('AWS_REGION')
 LOG_LEVEL = os.environ.get("LAMBDA_LOG_LEVEL", "DEBUG").upper()
 TABLE_NAME = os.environ.get('TABLE_NAME')
 
+ec2_client = boto3.client('ec2')
 eks_client = boto3.client('eks')
 dynamo_client = boto3.client('dynamodb')
 
@@ -48,13 +49,13 @@ def handler(event, context):
 
       item = items[0]
 
-      cluster_name = item.get('TargetId').get('S')
-      cluster_name.remove_prefix("cluster:")
+      raw_cluster_name = item.get('TargetId').get('S')
+      cluster_name = raw_cluster_name.remove_prefix("cluster:")
       if not cluster_name:
         logger.info(f"No EKS access entry for {instance_id}")
         continue
 
-      jumpbox_profile = item.get('jumpbox_profile').get('S')
+      jumpbox_profile = item.get('JumpboxProfile').get('S')
 
       eks_client.delete_access_entry(
         clusterName=cluster_name,
@@ -67,8 +68,7 @@ def handler(event, context):
         TableName=TABLE_NAME,
         Key={
             'InstanceId': {'S': instance_id },
-            'TargetType': {'S': "cluster" },
-            'ClusterName': {'S': cluster_name }
+            'TargetId': {'S': raw_cluster_name }
         }
       )
 
@@ -76,13 +76,15 @@ def handler(event, context):
         TableName=TABLE_NAME,
         KeyConditionExpression="InstanceId = :inst_val",
         ExpressionAttributeValues={
-          ":inst_val": {"S": instance_id}
+          ":inst_id": {"S": instance_id},
+          ":prefix": {"S": "securityGroup:"}
         }
       )
       items = response.get("Items")
       for item in items:
-        sg_id = item["TargetId"]["S"]
-        port = item["port"]["S"]
+        raw_sg_id = item["TargetId"]["S"]
+        sg_id = raw_sg_id.removeprefix("securityGroup:")
+        port = int(item["port"]["S"])
         jumpbox_sg = item["jumpbox_sg"]["S"]
 
         ec2_client.revoke_security_group_ingress(
@@ -102,8 +104,7 @@ def handler(event, context):
             TableName=TABLE_NAME,
             Key={
                 'InstanceId': {'S': instance_id },
-                'TargetType': {'S': "securityGroup" },
-                'TargetId': {'S': sg_id }
+                'TargetId': {'S': raw_sg_id }
             }
         )
         logger.info(f"Removed dynamo entry for {sg_id} access from {instance_id}")
